@@ -11,7 +11,10 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
@@ -20,12 +23,14 @@ import java.util.logging.Logger;
 /**
  * @author Lars Mortensen
  */
-public class CloudMap<K, V> implements Map<K, V> {
+public class CloudMap<K, V> implements Map<K, V>, KeyObserver<K, V> {
 
   private static final String id = "lam";
   private static final String pw = "lam";
   private static final String DataBaseURL = "jdbc:oracle:thin:@datdb.cphbusiness.dk:1521:dat";
   private String user;
+  private KeyObserver observer;
+  private Map<K,KeyPoller> pollers = new HashMap();
   
   Connection con = null;
 
@@ -115,7 +120,7 @@ public class CloudMap<K, V> implements Map<K, V> {
 
   @Override
   public V put(K k, V v) {
-    V previousValue =remove(k);
+    V previousValue = remove(k);
     try {
       ByteArrayOutputStream bos = new ByteArrayOutputStream();
       ObjectOutputStream oos = new ObjectOutputStream(bos);
@@ -184,14 +189,56 @@ public class CloudMap<K, V> implements Map<K, V> {
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
   }
   
-  public static void main(String[] args) {
+  
+  
+  public void registerAsKeyObserver(KeyObserver o){
+    observer = o;
+  }
+  
+  public void unRegisterKeyObserver(){
+    observer = null;
+  }
+  
+  public void watchKey(K key){
+    KeyPoller<K,V> poller = new KeyPoller(this, key, con);
+    poller.start();
+    pollers.put(key, poller);
+  }
+  
+  public void stopWatchKey(K key){
+    KeyPoller kp = pollers.remove(key);
+    if(kp !=null){
+      kp.stopKeyPoller();
+    }
+  }
+  
+  void notifyListener(K key,V val){
+    if(observer!=null){
+      observer.dataChanged(key, val);
+    }
+  }
+
+  @Override
+  public void dataChanged(K key, V newValue) {
+    System.out.println(key+ "Changed: "+newValue);
+  }
+  
+  public static void main(String[] args) throws InterruptedException {
     System.out.println("AAAAAAAAAA");
     CloudMap<String,String> map = new CloudMap("test-user100");
     System.out.println(map.size());
     map.put("aaaa", "Hello World");
     map.remove("aaaa");
     map.put("aaaa", "Hello World");
-    System.out.println(map.get("aaaa"));
+    map.registerAsKeyObserver(map);
+    map.watchKey("aaaa");
+    Thread.sleep(2000);
+    map.put("aaaa", "Hello Hello World");
+    //map.stopWatchKey("aaaa");
+    Thread.sleep(4000);
+    map.put("aaaa", "Hello Wonderful World");
+    Thread.sleep(4000);
+    
   }
 
 }

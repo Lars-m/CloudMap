@@ -212,15 +212,15 @@ public class CloudMap<K, V> implements Map<K, V>, KeyObserver<K, V> {
     }
   }
   
-  void notifyListener(K key,V val){
+  void notifyListener(K key,V oldVal, V newVal){
     if(observer!=null){
-      observer.dataChanged(key, val);
+      observer.dataChanged(key,oldVal,newVal);
     }
   }
 
   @Override
-  public void dataChanged(K key, V newValue) {
-    System.out.println(key+ "Changed: "+newValue);
+  public void dataChanged(K key,V oldValue, V newValue) {
+    System.out.println(key+ " Changed: "+newValue + "   From :"+ oldValue);
   }
   
   public static void main(String[] args) throws InterruptedException {

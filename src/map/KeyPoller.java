@@ -33,8 +33,8 @@ import java.util.logging.Logger;
         Thread.sleep(SLEEP_TIME);
         V newValue = cloudMap.get(keyToWatch);
         if(!newValue.equals(originalValue)){
+          cloudMap.notifyListener(keyToWatch, originalValue,newValue);
           originalValue = newValue;
-          cloudMap.notifyListener(keyToWatch, originalValue);
         }  
       } catch (InterruptedException ex) {
         Logger.getLogger(KeyPoller.class.getName()).log(Level.SEVERE, null, ex);

@@ -11,16 +11,19 @@ import org.junit.Ignore;
  */
 public class CloudMapTest {
   
-  Map<String,Person> cm;
+  Map<String,Person> cmUser1;
+  Map<String,Person> cmUser2;
   
   public CloudMapTest() {
-     cm = new CloudMap();
+     cmUser1 = new CloudMap("test-user100");
+     cmUser2 = new CloudMap("test-user200");
   }
   
   @Before
   public void setUp() {
     //OK, this is cheating since I'm using the control under test to set up the DB ;-)
-    cm.clear();
+    cmUser1.clear();
+    cmUser2.clear();
   }
 
   /**
@@ -28,10 +31,10 @@ public class CloudMapTest {
    */
   @Test
   public void testSize() {
-    cm.put("Lars1", new Person("Lars","Mortensen"));
-    cm.put("Lars2", new Person("Lars","Mortensen"));
-    cm.put("Lars3", new Person("Lars","Mortensen"));
-    assertEquals("Size should be 3", 3, cm.size());
+    cmUser1.put("Lars1", new Person("Lars","Mortensen"));
+    cmUser1.put("Lars2", new Person("Lars","Mortensen"));
+    cmUser1.put("Lars3", new Person("Lars","Mortensen"));
+    assertEquals("Size should be 3", 3, cmUser1.size());
   }
 
   /**
@@ -39,7 +42,7 @@ public class CloudMapTest {
    */
   @Test
   public void testIsEmpty() {
-    assertEquals("Size should be 0", 0, cm.size());
+    assertEquals("Size should be 0", 0, cmUser1.size());
   }
 
   /**
@@ -47,8 +50,8 @@ public class CloudMapTest {
    */
   @Test
   public void testContainsKey() {
-    cm.put("Lars", new Person("Lars","Mortensen"));
-    assertTrue("'Lars'", cm.containsKey("Lars"));
+    cmUser1.put("Lars", new Person("Lars","Mortensen"));
+    assertTrue("'Lars'", cmUser1.containsKey("Lars"));
   }
 
   /**
@@ -65,8 +68,8 @@ public class CloudMapTest {
   @Test
   public void testGet() {
     Person expected = new Person("Lars","Mortensen");
-    cm.put("Lars", expected);
-    assertEquals("'Lars' instance",expected,cm.get("Lars"));
+    cmUser1.put("Lars", expected);
+    assertEquals("'Lars' instance",expected,cmUser1.get("Lars"));
   }
 
   /**
@@ -76,14 +79,14 @@ public class CloudMapTest {
   public void testPut() {
     //Test that previous value is null and value is inserted correctly
     Person expected = new Person("Lars","Mortensen");
-    Person previousExpected = cm.put("Lars", expected);
-    assertEquals("'Lars' instance",expected,cm.get("Lars"));
+    Person previousExpected = cmUser1.put("Lars", expected);
+    assertEquals("'Lars' instance",expected,cmUser1.get("Lars"));
     assertNull("Previous value should be null",previousExpected);
     
     //Test the new previous value and value is changed correctly
     Person expectedNew = new Person("xxx","yyy");
-    previousExpected = cm.put("Lars", expectedNew);
-    assertEquals("'Lars' instance",expectedNew,cm.get("Lars"));
+    previousExpected = cmUser1.put("Lars", expectedNew);
+    assertEquals("'Lars' instance",expectedNew,cmUser1.get("Lars"));
     assertEquals("'Lars' instance",previousExpected,expected);
     
   }
@@ -94,9 +97,9 @@ public class CloudMapTest {
   @Test
   public void testRemove() {
     Person inserted = new Person("Lars","Mortensen");
-    cm.put("Lars",inserted);
-    Person p = cm.remove("Lars");
-    assertEquals("Size should be 0", 0, cm.size());
+    cmUser1.put("Lars",inserted);
+    Person p = cmUser1.remove("Lars");
+    assertEquals("Size should be 0", 0, cmUser1.size());
     assertEquals(inserted, p);
   }
 
@@ -113,11 +116,11 @@ public class CloudMapTest {
    */
   @Test
   public void testClear() {
-    cm.put("Lars1", new Person("Lars","Mortensen"));
-    cm.put("Lars2", new Person("Lars","Mortensen"));
-    cm.put("Lars3", new Person("Lars","Mortensen"));
-    cm.clear();
-    assertEquals("Size should be 0", 0, cm.size());
+    cmUser1.put("Lars1", new Person("Lars","Mortensen"));
+    cmUser1.put("Lars2", new Person("Lars","Mortensen"));
+    cmUser1.put("Lars3", new Person("Lars","Mortensen"));
+    cmUser1.clear();
+    assertEquals("Size should be 0", 0, cmUser1.size());
   }
 
   /**
@@ -142,6 +145,29 @@ public class CloudMapTest {
   @Test
   @Ignore
   public void testEntrySet() {
+  }
+  
+  @Test
+   public void testUserFunctionality1(){
+     //Verify that same KEY can exist in the database with different values for different users
+     Person personForUser1 = new Person("A","B");
+     Person personForUser2 = new Person("AA","BB");
+     cmUser1.put("KEY", personForUser1);
+     cmUser2.put("KEY", personForUser2);
+     assertEquals(personForUser1,cmUser1.get("KEY"));
+     assertEquals(personForUser2,cmUser2.get("KEY"));
+  }
+   
+  @Test
+   public void testUserFunctionality2(){
+     //Verify that same KEY value can be deleted for one user without interfering with the same key for another user
+     Person personForUser1 = new Person("A","B");
+     Person personForUser2 = new Person("AA","BB");
+     cmUser1.put("KEY", personForUser1);
+     cmUser2.put("KEY", personForUser2);
+     cmUser1.remove("KEY");
+     assertNull(cmUser1.get("KEY"));
+     assertEquals(personForUser2,cmUser2.get("KEY"));
   }
   
 }

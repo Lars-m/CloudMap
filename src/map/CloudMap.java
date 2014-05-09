@@ -1,5 +1,6 @@
 package map;
 
+import exceptions.NoSuchUserException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -10,10 +11,11 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * @author Lars Mortensen
@@ -23,22 +25,43 @@ public class CloudMap<K, V> implements Map<K, V> {
   private static final String id = "lam";
   private static final String pw = "lam";
   private static final String DataBaseURL = "jdbc:oracle:thin:@datdb.cphbusiness.dk:1521:dat";
+  private String user;
+  
   Connection con = null;
 
-  public CloudMap() {
+  public CloudMap(String user) {
     try {
       con = DriverManager.getConnection(DataBaseURL, id, pw);
+      checkUser(user);
+      this.user = user;
+      
     } catch (SQLException e) {
       System.out.println(e);
+    }
+  }
+  
+  private void checkUser(String user){
+    try {
+      String sql = "select * from CLOUDMAP_USERS where USERID = ?";
+      PreparedStatement ps = con.prepareStatement(sql);
+      ps.setString(1, user);
+      ResultSet rs = ps.executeQuery();
+      if (!rs.next()) {
+        throw new NoSuchUserException("This user name does not exist");
+      }
+    } catch (SQLException ex) {
+      Logger.getLogger(CloudMap.class.getName()).log(Level.SEVERE, null, ex);
     }
   }
 
   @Override
   public int size() {
-    String sql = "SELECT COUNT(*) FROM CLOUDMAP";
+    String sql = "SELECT COUNT(*) FROM CLOUDMAP2 where USERID = ?";
     try {
-      Statement stmt = con.createStatement();
-      ResultSet rs = stmt.executeQuery(sql);
+      PreparedStatement stmt = con.prepareStatement(sql);
+      stmt.setString(1,user);
+              
+      ResultSet rs = stmt.executeQuery();
       while (rs.next()) {
         return rs.getInt("COUNT(*)");
       }
@@ -66,9 +89,10 @@ public class CloudMap<K, V> implements Map<K, V> {
   @Override
   public V get(Object o) {
     try {
-      String sql = "select * from CLOUDMAP where key = ?";
+      String sql = "select * from CLOUDMAP2 where key = ? and userid = ?";
       PreparedStatement ps = con.prepareStatement(sql);
       ps.setString(1, o.toString());
+      ps.setString(2,user);
       ResultSet rs = ps.executeQuery();
       if (rs.next()) {
           ByteArrayInputStream bais;
@@ -101,10 +125,11 @@ public class CloudMap<K, V> implements Map<K, V> {
       bos.close();
       byte[] data = bos.toByteArray();
 
-      String sql = "insert into CLOUDMAP values (?,?)";
+      String sql = "insert into CLOUDMAP2(key,value,userid) values (?,?,?)";
       PreparedStatement ps = con.prepareStatement(sql);
       ps.setString(1, k.toString());
       ps.setBytes(2, data);
+      ps.setString(3, user);
       ps.executeUpdate();
     } catch (IOException | SQLException  ex ) {
       throw new RuntimeException(ex);
@@ -116,9 +141,10 @@ public class CloudMap<K, V> implements Map<K, V> {
   public V remove(Object o) {
     V lastValue = get((K)o);
     try {
-      String sql = "delete from CLOUDMAP where KEY = ?";
+      String sql = "delete from CLOUDMAP2 where KEY = ? and userid = ?";
       PreparedStatement ps = con.prepareStatement(sql);
       ps.setString(1,o.toString());
+      ps.setString(2,user);
       ps.executeUpdate();
     } catch (SQLException ex) {
       throw new RuntimeException(ex);
@@ -134,8 +160,9 @@ public class CloudMap<K, V> implements Map<K, V> {
   @Override
   public void clear() {
     try {
-      String sql = "delete from CLOUDMAP";
+      String sql = "delete from CLOUDMAP2 where userid = ?";
       PreparedStatement ps = con.prepareStatement(sql);
+      ps.setString(1, user);
       ps.executeUpdate();
     } catch (SQLException ex) {
       throw new RuntimeException(ex);
@@ -155,6 +182,16 @@ public class CloudMap<K, V> implements Map<K, V> {
   @Override
   public Set<Map.Entry<K, V>> entrySet() {
     throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+  }
+  
+  public static void main(String[] args) {
+    System.out.println("AAAAAAAAAA");
+    CloudMap<String,String> map = new CloudMap("test-user100");
+    System.out.println(map.size());
+    map.put("aaaa", "Hello World");
+    map.remove("aaaa");
+    map.put("aaaa", "Hello World");
+    System.out.println(map.get("aaaa"));
   }
 
 }
